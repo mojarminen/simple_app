@@ -1,3 +1,10 @@
+DROP TABLE IF EXISTS odds_1X2;
+DROP TABLE IF EXISTS match;
+DROP TABLE IF EXISTS team;
+DROP TABLE IF EXISTS competition;
+DROP TABLE IF EXISTS season;
+DROP TABLE IF EXISTS league;
+
 CREATE TABLE league (
   id integer,
   title text NOT NULL,
@@ -34,12 +41,14 @@ CREATE TABLE team (
 CREATE TABLE match (
   id integer,
   competition integer NOT NULL, 
-  "date" timestamp NOT NULL,
-  neutral_field boolean NOT NULL DEFAULT FALSE,
+  "date" text NOT NULL,
+  neutral_field integer NOT NULL DEFAULT 0,
   home_team integer NOT NULL,
   away_team integer NOT NULL,
   full_time_home_team_goals integer,
   full_time_away_team_goals integer,
+  awarded integer NOT NULL DEFAULT 0,
+  cancelled integer NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   UNIQUE ("date", home_team, away_team),
   FOREIGN KEY (competition) REFERENCES competition(id),
