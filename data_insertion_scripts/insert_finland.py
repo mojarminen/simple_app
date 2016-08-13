@@ -8,7 +8,9 @@ import sqlite3
 
 VEIKKAUSLIIGA_PATH = '../datafiles/finland/veikkausliiga'
 YKKONEN_PATH = '../datafiles/finland/ykkönen'
+
 DB_FILE = '../football.db'
+conn = sqlite3.connect(DB_FILE)
 
 # Keys are all the team names used.
 # Values are official names of the teams.
@@ -67,8 +69,6 @@ TEAMS = {u'AC Allianssi': 'AC Allianssi',
          
 LEAGUES = ("Veikkausliiga", u"Ykkönen")
 SEASONS = ("2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016")
-
-conn = sqlite3.connect(DB_FILE)
 
 def read_data(filepath):
     result = []
