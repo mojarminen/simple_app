@@ -4,6 +4,49 @@ import sqlite3
 
 import db
 
+
+def get_matches(team=None, league=None, season=None, start=None, end=None, cancelled=False, awarded=False):
+
+    if team is not None:
+        team_id = db.get_team_id(team)
+    else:
+        team_id = None
+
+    if league is not None:
+        league_id = db.get_league_id(league)
+    else:
+        league_id = None
+        
+    if season is not None:
+        season_id = db.get_season_id(season)
+    else:
+        season_id = None
+        
+    return db.get_matches(team_id=team_id, start=start, end=end, league_id=league_id, season_id=season_id, cancelled=cancelled, awarded=awarded)
+
+
+def get_n_previous_matches_of_team(team, date, count, league=None, season=None):
+
+    team_id = db.get_team_id(team)
+
+    if league is not None:
+        league_id = db.get_league_id(league)
+    else:
+        league_id = None
+        
+    if season is not None:
+        season_id = db.get_season_id(season)
+    else:
+        season_id = None
+        
+    matches = db.get_matches(team_id=team_id, end=date, league_id=league_id, season_id=season_id, cancelled=False, awarded=False)
+    
+    matches = sorted(matches, key=lambda x: x['date'])
+    matches.reverse()
+    
+    return matches[:min(count, len(matches))]
+    
+
 def get_season_table(league, season):
     
     league_id = db.get_league_id(league)

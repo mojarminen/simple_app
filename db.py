@@ -5,6 +5,24 @@ import sqlite3
 DB_FILE = 'football.db'
 conn = sqlite3.connect(DB_FILE)
 
+
+def get_match_1X2_odds(match_id):
+    cur = conn.cursor()
+    
+    cur.execute('''SELECT booker, home_win, draw, away_win FROM odds_1X2 WHERE match = ?''', (match_id,))
+    
+    result = {}
+    for row in cur.fetchall():
+        booker = row[0]
+        home_win = row[1]
+        draw = row[2]
+        away_win = row[3]
+        
+        result[booker] = {'home_win': home_win, 'draw': draw, 'away_win': away_win}
+    
+    return result
+    
+    
 def get_matches(team_id=None, home_team_id=None, away_team_id=None, league_id=None, season_id=None, start=None, end=None, cancelled=None, awarded=None):
     if league_id is not None and type(league_id) is not int:
         raise Exception('Invalid type for league_id %s' % str(type(league_id)))
@@ -35,7 +53,7 @@ def get_matches(team_id=None, home_team_id=None, away_team_id=None, league_id=No
 
     query = '''SELECT home_team.id, away_team.id, match.date, match.full_time_home_team_goals, 
                match.full_time_away_team_goals, match.cancelled, match.awarded, home_team.title, away_team.title, 
-               league.id, league.title, season.id, season.title
+               league.id, league.title, season.id, season.title, match.id
                FROM match, team as home_team, team as away_team, competition, league, season
                WHERE match.home_team = home_team.id
                AND match.away_team = away_team.id
@@ -85,7 +103,8 @@ def get_matches(team_id=None, home_team_id=None, away_team_id=None, league_id=No
                         'league_id': row[9],
                         'league': row[10],
                         'season_id': row[11],
-                        'season': row[12]})
+                        'season': row[12],
+                        'match_id': row[13]})
 
     return matches
 
