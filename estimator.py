@@ -8,17 +8,21 @@ import db
 
 def simple_estimation(home_team, away_team, date, season=None, league=None):
 
+    HISTORY_IN_WEEKS = 26
+    COMMON_HISTORY_WEIGHT = 0.01
+
     year, month, day = [int(d) for d in date.split('-')]
-    start = datetime.date(year, month, day) + datetime.timedelta(weeks=-52)
+    start = datetime.date(year, month, day) + datetime.timedelta(weeks=-HISTORY_IN_WEEKS)
     start = start.strftime('%Y-%m-%d')
     
-    HISTORY_WEIGHT = 0.5
     
-    h1, hX, h2, h_count = history.get_home_match_percentages_of_team(home_team, league=league, season=season, start=start, end=date)
-    a2, aX, a1, a_count = history.get_away_match_percentages_of_team(away_team, league=league, season=season, start=start, end=date)
-    c1, cX, c2, c_count = history.get_1X2_percentages(league=league, season=season)
+#    h1, hX, h2, h_count = history.get_home_match_percentages_of_team(home_team, league=league, season=season, start=start, end=date)
+#    a2, aX, a1, a_count = history.get_away_match_percentages_of_team(away_team, league=league, season=season, start=start, end=date)
+    h1, hX, h2, h_count = history.get_home_match_percentages_of_team(home_team, league=league, season=None, start=start, end=date)
+    a2, aX, a1, a_count = history.get_away_match_percentages_of_team(away_team, league=league, season=None, start=start, end=date)
+    c1, cX, c2, c_count = history.get_1X2_percentages(league=league, start=start, end=date)
 
-    if h_count == 0 or a_count == 0:
+    if h_count < 5 or a_count < 5:
         return None
 
     result = {'1': h1*(float(h_count)/(h_count+a_count)) + a1*(float(a_count)/(h_count+a_count)),
@@ -27,15 +31,152 @@ def simple_estimation(home_team, away_team, date, season=None, league=None):
               'home_team_games': h_count, 
               'away_team_games': a_count}
               
-    result['1'] = result['1'] * (1 - HISTORY_WEIGHT) + c1 * HISTORY_WEIGHT
-    result['X'] = result['X'] * (1 - HISTORY_WEIGHT) + cX * HISTORY_WEIGHT
-    result['2'] = result['2'] * (1 - HISTORY_WEIGHT) + c2 * HISTORY_WEIGHT
+    result['1'] = result['1'] * (1 - COMMON_HISTORY_WEIGHT) + c1 * COMMON_HISTORY_WEIGHT
+    result['X'] = result['X'] * (1 - COMMON_HISTORY_WEIGHT) + cX * COMMON_HISTORY_WEIGHT
+    result['2'] = result['2'] * (1 - COMMON_HISTORY_WEIGHT) + c2 * COMMON_HISTORY_WEIGHT
+    
+    return result
+
+
+def simple_estimation2(home_team, away_team, date, season=None, league=None):
+    
+    NUMBER_OF_LONG_TIME_MATCHES = 30
+    NUMBER_OF_SHORT_TIME_MATCHES = 5
+    
+    # Get home team's home game percentages.
+    
+    # Get away team's away game percentages.
+    
+    # Get home team's long time game percentages.
+    matches = history.get_n_previous_matches_of_team(home_team, date, NUMBER_OF_LONG_TIME_MATCHES, league=league, season=None)
+    if len(matches) < NUMBER_OF_LONG_TIME_MATCHES:
+        return None
+    wins = 0
+    draws = 0
+    losses = 0
+    for m in matches:
+        if m['home_team'] == home_team:
+            if m['home_goals'] > m['away_goals']:
+                wins += 1
+            elif m['home_goals'] < m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        elif m['away_team'] == home_team:
+            if m['home_goals'] < m['away_goals']:
+                wins += 1
+            elif m['home_goals'] > m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        else:
+            raise Exception('invalid game')
+    home_team_long_time_win_percentage = float(wins)/len(matches)
+    home_team_long_time_draw_percentage = float(draws)/len(matches)
+    home_team_long_time_loss_percentage = float(losses)/len(matches)
+    
+    # Get away team's long time game percentages. 
+    matches = history.get_n_previous_matches_of_team(away_team, date, NUMBER_OF_LONG_TIME_MATCHES, league=league, season=None)
+    if len(matches) < NUMBER_OF_LONG_TIME_MATCHES:
+        return None
+    wins = 0
+    draws = 0
+    losses = 0
+    for m in matches:
+        if m['home_team'] == away_team:
+            if m['home_goals'] > m['away_goals']:
+                wins += 1
+            elif m['home_goals'] < m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        elif m['away_team'] == away_team:
+            if m['home_goals'] < m['away_goals']:
+                wins += 1
+            elif m['home_goals'] > m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        else:
+            raise Exception('invalid game')
+    away_team_long_time_win_percentage = float(wins)/len(matches)
+    away_team_long_time_draw_percentage = float(draws)/len(matches)
+    away_team_long_time_loss_percentage = float(losses)/len(matches)
+    
+    # Get home team's short time game percentages.
+    matches = history.get_n_previous_matches_of_team(home_team, date, NUMBER_OF_SHORT_TIME_MATCHES, league=league, season=None)
+    if len(matches) < NUMBER_OF_SHORT_TIME_MATCHES:
+        return None
+    wins = 0
+    draws = 0
+    losses = 0
+    for m in matches:
+        if m['home_team'] == home_team:
+            if m['home_goals'] > m['away_goals']:
+                wins += 1
+            elif m['home_goals'] < m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        elif m['away_team'] == home_team:
+            if m['home_goals'] < m['away_goals']:
+                wins += 1
+            elif m['home_goals'] > m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        else:
+            raise Exception('invalid game')
+    home_team_short_time_win_percentage = float(wins)/len(matches)
+    home_team_short_time_draw_percentage = float(draws)/len(matches)
+    home_team_short_time_loss_percentage = float(losses)/len(matches)
+    
+    # Get away team's short time game percentages. 
+    matches = history.get_n_previous_matches_of_team(away_team, date, NUMBER_OF_SHORT_TIME_MATCHES, league=league, season=None)
+    if len(matches) < NUMBER_OF_SHORT_TIME_MATCHES:
+        return None
+    wins = 0
+    draws = 0
+    losses = 0
+    for m in matches:
+        if m['home_team'] == away_team:
+            if m['home_goals'] > m['away_goals']:
+                wins += 1
+            elif m['home_goals'] < m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        elif m['away_team'] == away_team:
+            if m['home_goals'] < m['away_goals']:
+                wins += 1
+            elif m['home_goals'] > m['away_goals']:
+                losses += 1
+            else:
+                draws += 1
+        else:
+            raise Exception('invalid game')
+    away_team_short_time_win_percentage = float(wins)/len(matches)
+    away_team_short_time_draw_percentage = float(draws)/len(matches)
+    away_team_short_time_loss_percentage = float(losses)/len(matches)
+    
+    
+    long_time_percentages = (home_team_long_time_win_percentage*0.5 + away_team_long_time_loss_percentage*0.5,
+                             home_team_long_time_draw_percentage*0.5 + away_team_long_time_draw_percentage*0.5,
+                             home_team_long_time_loss_percentage*0.5 + away_team_long_time_win_percentage*0.5)
+    
+    short_time_percentages = (home_team_short_time_win_percentage*0.5 + away_team_short_time_loss_percentage*0.5,
+                              home_team_short_time_draw_percentage*0.5 + away_team_short_time_draw_percentage*0.5,
+                              home_team_short_time_loss_percentage*0.5 + away_team_short_time_win_percentage*0.5)
+    
+    result = {'1': long_time_percentages[0]*0.8 + short_time_percentages[0]*0.2, 
+              'X': long_time_percentages[1]*0.8 + short_time_percentages[1]*0.2, 
+              '2': long_time_percentages[2]*0.8 + short_time_percentages[2]*0.2}
     
     return result
     
     
 def poisson(home_team, away_team, date, season=None, league=None):
-    HISTORY_IN_WEEKS = 56
+    HISTORY_IN_WEEKS = 52
     
     year, month, day = [int(d) for d in date.split('-')]
     start = datetime.date(year, month, day) + datetime.timedelta(weeks=-HISTORY_IN_WEEKS)
@@ -43,10 +184,6 @@ def poisson(home_team, away_team, date, season=None, league=None):
     matches = history.get_matches(league=league, start=start, end=date)
     if len(matches) == 0:
         return None
-
-    print start
-    print date
-    print 'matches:', len(matches)
 
     # Get the mean values of home goals and away goals per game.
     home_goals = 0
@@ -71,7 +208,6 @@ def poisson(home_team, away_team, date, season=None, league=None):
     if number_of_matches == 0:
         return None
     home_attack_strength = (float(home_goals)/number_of_matches)/average_goals_scored_at_home
-    print 'home_attack_strength:', home_attack_strength
     
     # Calculate away team defence strength.
     home_goals = 0
@@ -83,10 +219,8 @@ def poisson(home_team, away_team, date, season=None, league=None):
     if number_of_matches == 0:
         return None
     away_defence_strength = (float(home_goals)/number_of_matches)/average_goals_conceded_away
-    print away_defence_strength
     
     home_goals_estimation = home_attack_strength * away_defence_strength * average_goals_scored_at_home
-    print 'home goals estimation:', home_goals_estimation
     
     # Calculate away team attack strength.
     
@@ -100,7 +234,6 @@ def poisson(home_team, away_team, date, season=None, league=None):
     if number_of_matches == 0:
         return None
     away_attack_strength = (float(away_goals)/number_of_matches)/average_goals_scored_away
-    print away_attack_strength
     
     # Calculate home team defence strength.
     away_goals = 0
@@ -112,10 +245,8 @@ def poisson(home_team, away_team, date, season=None, league=None):
     if number_of_matches == 0:
         return None
     home_defence_strength = (float(away_goals)/number_of_matches)/average_goals_conceded_at_home
-    print home_defence_strength
     
     away_goals_estimation = away_attack_strength * home_defence_strength * average_goals_scored_away
-    print 'away goals estimation:', away_goals_estimation
     
     home_win_probability = 0
     draw_probability = 0
