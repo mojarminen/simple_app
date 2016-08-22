@@ -43,25 +43,34 @@ def simple_estimation2(home_team, away_team, date, season=None, league=None):
     NUMBER_OF_LONG_TIME_MATCHES = 30
     NUMBER_OF_SHORT_TIME_MATCHES = 5
     
-    # Get home team's home game percentages.
-    
-    # Get away team's away game percentages.
-    
+    # Get home team's long time home game percentages.    
     # Get home team's long time game percentages.
     matches = history.get_n_previous_matches_of_team(home_team, date, NUMBER_OF_LONG_TIME_MATCHES, league=league, season=None)
     if len(matches) < NUMBER_OF_LONG_TIME_MATCHES:
         return None
+
     wins = 0
     draws = 0
     losses = 0
+
+    home_wins = 0
+    home_draws = 0
+    home_losses = 0
+
+    home_games = 0
+
     for m in matches:
         if m['home_team'] == home_team:
+            home_games += 1
             if m['home_goals'] > m['away_goals']:
                 wins += 1
+                home_wins += 1
             elif m['home_goals'] < m['away_goals']:
                 losses += 1
+                home_losses += 1
             else:
                 draws += 1
+                home_draws += 1
         elif m['away_team'] == home_team:
             if m['home_goals'] < m['away_goals']:
                 wins += 1
@@ -71,17 +80,32 @@ def simple_estimation2(home_team, away_team, date, season=None, league=None):
                 draws += 1
         else:
             raise Exception('invalid game')
+
     home_team_long_time_win_percentage = float(wins)/len(matches)
     home_team_long_time_draw_percentage = float(draws)/len(matches)
     home_team_long_time_loss_percentage = float(losses)/len(matches)
+
+    home_team_long_time_home_win_percentage = float(home_wins)/home_games
+    home_team_long_time_home_draw_percentage = float(home_draws)/home_games
+    home_team_long_time_home_loss_percentage = float(home_losses)/home_games
     
+    # Get away team's long time away game percentages.    
     # Get away team's long time game percentages. 
+
     matches = history.get_n_previous_matches_of_team(away_team, date, NUMBER_OF_LONG_TIME_MATCHES, league=league, season=None)
     if len(matches) < NUMBER_OF_LONG_TIME_MATCHES:
         return None
+
     wins = 0
     draws = 0
     losses = 0
+
+    away_wins = 0
+    away_draws = 0
+    away_losses = 0
+
+    away_games = 0
+
     for m in matches:
         if m['home_team'] == away_team:
             if m['home_goals'] > m['away_goals']:
@@ -91,17 +115,26 @@ def simple_estimation2(home_team, away_team, date, season=None, league=None):
             else:
                 draws += 1
         elif m['away_team'] == away_team:
+            away_games += 1
             if m['home_goals'] < m['away_goals']:
                 wins += 1
+                away_wins += 1
             elif m['home_goals'] > m['away_goals']:
                 losses += 1
+                away_losses += 1
             else:
                 draws += 1
+                away_draws += 1
         else:
             raise Exception('invalid game')
+            
     away_team_long_time_win_percentage = float(wins)/len(matches)
     away_team_long_time_draw_percentage = float(draws)/len(matches)
     away_team_long_time_loss_percentage = float(losses)/len(matches)
+    
+    away_team_long_time_away_win_percentage = float(away_wins)/away_games
+    away_team_long_time_away_draw_percentage = float(away_draws)/away_games
+    away_team_long_time_away_loss_percentage = float(away_losses)/away_games
     
     # Get home team's short time game percentages.
     matches = history.get_n_previous_matches_of_team(home_team, date, NUMBER_OF_SHORT_TIME_MATCHES, league=league, season=None)
@@ -167,10 +200,14 @@ def simple_estimation2(home_team, away_team, date, season=None, league=None):
     short_time_percentages = (home_team_short_time_win_percentage*0.5 + away_team_short_time_loss_percentage*0.5,
                               home_team_short_time_draw_percentage*0.5 + away_team_short_time_draw_percentage*0.5,
                               home_team_short_time_loss_percentage*0.5 + away_team_short_time_win_percentage*0.5)
-    
-    result = {'1': long_time_percentages[0]*0.8 + short_time_percentages[0]*0.2, 
-              'X': long_time_percentages[1]*0.8 + short_time_percentages[1]*0.2, 
-              '2': long_time_percentages[2]*0.8 + short_time_percentages[2]*0.2}
+                              
+    home_advantage = (home_team_long_time_home_win_percentage*0.5 + away_team_long_time_away_loss_percentage*0.5,
+                      home_team_long_time_home_draw_percentage*0.5 + away_team_long_time_away_draw_percentage*0.5,
+                      home_team_long_time_home_loss_percentage*0.5 + away_team_long_time_away_win_percentage*0.5)
+
+    result = {'1': long_time_percentages[0]*0.4 + short_time_percentages[0]*0.2 + home_advantage[0]*0.4, 
+              'X': long_time_percentages[1]*0.4 + short_time_percentages[1]*0.2 + home_advantage[1]*0.4, 
+              '2': long_time_percentages[2]*0.4 + short_time_percentages[2]*0.2 + home_advantage[2]*0.4}
     
     return result
     

@@ -37,9 +37,11 @@ def play(initial_money, estimator, betting_strategy, league=None, season=None, s
         match['away_win_probability'] = estimation['2']
         
         # Set bets.
-        match['bet_1'] = betting_strategy(money, estimation['1'], odds['home_win'])
-        match['bet_X'] = betting_strategy(money, estimation['X'], odds['draw'])
-        match['bet_2'] = betting_strategy(money, estimation['2'], odds['away_win'])
+        match['bet_1'], match['bet_X'], match['bet_2'] = betting_strategy(money, estimation['1'], odds['home_win'], estimation['X'], odds['draw'], estimation['2'], odds['away_win'])
+        
+#        match['bet_1'] = betting_strategy(money, estimation['1'], odds['home_win'])
+#        match['bet_X'] = betting_strategy(money, estimation['X'], odds['draw'])
+#        match['bet_2'] = betting_strategy(money, estimation['2'], odds['away_win'])
         money = money - match['bet_1'] - match['bet_X'] - match['bet_2']
         match['returning'] = match['returning'] - match['bet_1'] - match['bet_X'] - match['bet_2']
  
