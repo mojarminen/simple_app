@@ -154,7 +154,7 @@ def get_season_table(league, season):
     return reversed(sorted(result, key=lambda x: x[1]))
 
 
-def get_match_percentages_of_team(team, league=None, season=None, start=None, end=None):
+def get_full_time_match_percentages_of_team(team, league=None, season=None, start=None, end=None, start_weight=None, end_weight=None, number_of_matches=None):
     '''returns win%, draw%, loss%'''
 
     team_id = db.get_team_id(team)
@@ -171,43 +171,93 @@ def get_match_percentages_of_team(team, league=None, season=None, start=None, en
 
     matches = db.get_matches(team_id=team_id, season_id=season_id, league_id=league_id, start=start, end=end, cancelled=False, awarded=False)
     
-    num_of_games = len(matches)
-    wins = 0
-    draws = 0
-    losses = 0
-    for row in matches:
-        home_team_id = row['home_team_id']
-        away_team_id = row['away_team_id']
-        home_goals = row['home_goals']
-        away_goals = row['away_goals']
-        
-        if home_team_id == team_id:
-            if home_goals > away_goals:
-                wins += 1
-            elif home_goals < away_goals:
-                losses += 1
+    if number_of_matches:
+        if len(matches) > number_of_matches:
+            matches.reverse()
+            matches = matches[:number_of_matches]
+            matches.reverse()
+    
+    if start_weight is None or end_weight is None:
+        num_of_games = len(matches)
+        wins = 0
+        draws = 0
+        losses = 0
+        for row in matches:
+            home_team_id = row['home_team_id']
+            away_team_id = row['away_team_id']
+            full_time_home_team_goals = row['full_time_home_team_goals']
+            full_time_away_team_goals = row['full_time_away_team_goals']
+            
+            if home_team_id == team_id:
+                if full_time_home_team_goals > full_time_away_team_goals:
+                    wins += 1
+                elif full_time_home_team_goals < full_time_away_team_goals:
+                    losses += 1
+                else:
+                    draws += 1
+            elif away_team_id == team_id:
+                if full_time_home_team_goals < full_time_away_team_goals:
+                    wins += 1
+                elif full_time_home_team_goals > full_time_away_team_goals:
+                    losses += 1
+                else:
+                    draws += 1
             else:
-                draws += 1
-        elif away_team_id == team_id:
-            if home_goals < away_goals:
-                wins += 1
-            elif home_goals > away_goals:
-                losses += 1
-            else:
-                draws += 1
+                raise Exeption('not a game of the team ' + team)
+
+        if num_of_games == 0:
+            return (0,0,0,0)
         else:
-            raise Exeption('not a game of the team ' + team)
-
-    if num_of_games == 0:
-        return (0,0,0,0)
+            return (float(wins)/num_of_games,
+                    float(draws)/num_of_games,
+                    float(losses)/num_of_games,
+                    num_of_games)
     else:
-        return (float(wins)/num_of_games,
-                float(draws)/num_of_games,
-                float(losses)/num_of_games,
-                num_of_games)
+        if len(matches) == 0:
+            return (0,0,0,0)
+        
+        delta = (end_weight - start_weight)/len(matches)
+        weight_sum = 0.
+        
+        wins = 0.
+        draws = 0.
+        losses = 0.
+        
+        weight = start_weight
+        
+        for row in matches:
+            home_team_id = row['home_team_id']
+            away_team_id = row['away_team_id']
+            full_time_home_team_goals = row['full_time_home_team_goals']
+            full_time_away_team_goals = row['full_time_away_team_goals']
+            
+            if home_team_id == team_id:
+                if full_time_home_team_goals > full_time_away_team_goals:
+                    wins += weight
+                elif full_time_home_team_goals < full_time_away_team_goals:
+                    losses += weight
+                else:
+                    draws += weight
+            elif away_team_id == team_id:
+                if full_time_home_team_goals < full_time_away_team_goals:
+                    wins += weight
+                elif full_time_home_team_goals > full_time_away_team_goals:
+                    losses += weight
+                else:
+                    draws += weight
+            else:
+                raise Exeption('not a game of the team ' + team)
 
+            weight_sum += weight
 
-def get_home_match_percentages_of_team(team, league=None, season=None, start=None, end=None):
+            weight += delta
+
+        return (wins/weight_sum,
+                draws/weight_sum,
+                losses/weight_sum,
+                len(matches))
+
+def get_full_time_home_match_percentages_of_team(team, league=None, season=None, start=None, end=None, start_weight=None, end_weight=None, number_of_matches=None):
     '''returns win%, draw%, loss%'''
 
     team_id = db.get_team_id(team)
@@ -224,28 +274,64 @@ def get_home_match_percentages_of_team(team, league=None, season=None, start=Non
 
     matches = db.get_matches(home_team_id=team_id, season_id=season_id, league_id=league_id, start=start, end=end, cancelled=False, awarded=False)
    
-    num_of_games = len(matches)
-    wins = 0
-    draws = 0
-    losses = 0
-    for g in matches:
-        if g['home_goals'] > g['away_goals']:
-            wins += 1
-        elif g['home_goals'] < g['away_goals']:
-            losses += 1
+    if number_of_matches:
+        if len(matches) > number_of_matches:
+            matches.reverse()
+            matches = matches[:number_of_matches]
+            matches.reverse()
+
+    if start_weight is None or end_weight is None:
+        num_of_games = len(matches)
+        wins = 0
+        draws = 0
+        losses = 0
+        for g in matches:
+            if g['full_time_home_team_goals'] > g['full_time_away_team_goals']:
+                wins += 1
+            elif g['full_time_home_team_goals'] < g['full_time_away_team_goals']:
+                losses += 1
+            else:
+                draws += 1
+                
+        if num_of_games == 0:
+            return (0,0,0,0)
         else:
-            draws += 1
-            
-    if num_of_games == 0:
-        return (0,0,0,0)
+            return (float(wins)/num_of_games,
+                    float(draws)/num_of_games,
+                    float(losses)/num_of_games,
+                    num_of_games)
     else:
-        return (float(wins)/num_of_games,
-                float(draws)/num_of_games,
-                float(losses)/num_of_games,
-                num_of_games)
+        if len(matches) == 0:
+            return (0,0,0,0)
+        
+        delta = (end_weight - start_weight)/len(matches)
+        weight_sum = 0.
+        
+        wins = 0.
+        draws = 0.
+        losses = 0.
+        
+        weight = start_weight
+        
+        for g in matches:
+            if g['full_time_home_team_goals'] > g['full_time_away_team_goals']:
+                wins += weight
+            elif g['full_time_home_team_goals'] < g['full_time_away_team_goals']:
+                losses += weight
+            else:
+                draws += weight
+                
+            weight_sum += weight
+                
+            weight += delta
+                
+        return (wins/weight_sum,
+                draws/weight_sum,
+                losses/weight_sum,
+                len(matches))
     
     
-def get_away_match_percentages_of_team(team, league=None, season=None, start=None, end=None):
+def get_full_time_away_match_percentages_of_team(team, league=None, season=None, start=None, end=None, start_weight=None, end_weight=None, number_of_matches=None):
     '''returns win%, draw%, loss%'''
 
     team_id = db.get_team_id(team)
@@ -261,29 +347,65 @@ def get_away_match_percentages_of_team(team, league=None, season=None, start=Non
         season_id = None
 
     matches = db.get_matches(away_team_id=team_id, season_id=season_id, league_id=league_id, start=start, end=end, cancelled=False, awarded=False)
-   
-    num_of_games = len(matches)
-    wins = 0
-    draws = 0
-    losses = 0
-    for g in matches:
-        if g['home_goals'] < g['away_goals']:
-            wins += 1
-        elif g['home_goals'] > g['away_goals']:
-            losses += 1
+       
+    if number_of_matches:
+        if len(matches) > number_of_matches:
+            matches.reverse()
+            matches = matches[:number_of_matches]
+            matches.reverse()
+
+    if start_weight is None or end_weight is None:
+        num_of_games = len(matches)
+        wins = 0
+        draws = 0
+        losses = 0
+        for g in matches:
+            if g['full_time_home_team_goals'] < g['full_time_away_team_goals']:
+                wins += 1
+            elif g['full_time_home_team_goals'] > g['full_time_away_team_goals']:
+                losses += 1
+            else:
+                draws += 1
+                
+        if num_of_games == 0:
+            return (0,0,0,0)
         else:
-            draws += 1
-            
-    if num_of_games == 0:
-        return (0,0,0,0)
+            return (float(wins)/num_of_games,
+                    float(draws)/num_of_games,
+                    float(losses)/num_of_games,
+                    num_of_games)
     else:
-        return (float(wins)/num_of_games,
-                float(draws)/num_of_games,
-                float(losses)/num_of_games,
-                num_of_games)
+        if len(matches) == 0:
+            return (0,0,0,0)
+        
+        delta = (end_weight - start_weight)/len(matches)
+        weight_sum = 0.
+        
+        wins = 0.
+        draws = 0.
+        losses = 0.
+        
+        weight = start_weight
+        
+        for g in matches:
+            if g['full_time_home_team_goals'] < g['full_time_away_team_goals']:
+                wins += weight
+            elif g['full_time_home_team_goals'] > g['full_time_away_team_goals']:
+                losses += weight
+            else:
+                draws += weight
+                
+            weight_sum += weight
+                
+            weight += delta
+                
+        return (wins/weight_sum,
+                draws/weight_sum,
+                losses/weight_sum,
+                len(matches))
     
 
-def get_1X2_percentages(league=None, season=None, start=None, end=None):
+def get_full_time_1X2_percentages(league=None, season=None, start=None, end=None, start_weight=None, end_weight=None, number_of_matches=None):
 
     if league:
         league_id = db.get_league_id(league)
@@ -296,82 +418,61 @@ def get_1X2_percentages(league=None, season=None, start=None, end=None):
         season_id = None
 
     matches = db.get_matches(season_id=season_id, league_id=league_id, start=start, end=end, cancelled=False, awarded=False)
-    
-    num_of_matches = len(matches)
-    home_win = 0
-    draw = 0
-    away_win = 0
-    
-    for match in matches:
-        if match['home_goals'] > match['away_goals']:
-            home_win += 1
-        elif match['home_goals'] < match['away_goals']:
-            away_win += 1
-        else:
-            draw += 1
-            
-    if num_of_matches == 0:
-        return (0,0,0,0)
-    else:
-        return (float(home_win)/num_of_matches,
-                float(draw)/num_of_matches,
-                float(away_win)/num_of_matches,
-                num_of_matches)
 
+    if number_of_matches:
+        if len(matches) > number_of_matches:
+            matches.reverse()
+            matches = matches[:number_of_matches]
+            matches.reverse()
     
-if __name__ == "__main__":
-    # Veikkausliiga :   2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008, 2007, 2006, 2005, 2004, 2003 - OK
-    # Ykkönen:          2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008, 2007, 2006, 2005, 2004 - OK
-    table = get_season_table(u"Veikkausliiga", "2015")
-#    for row in table:
-#        print row
-
-    teams = db.get_teams()
-#    print teams
+    if start_weight is None or end_weight is None:
+        num_of_matches = len(matches)
+        home_win = 0
+        draw = 0
+        away_win = 0
         
-    ps = get_match_percentages_of_team('Kuopion Palloseura', 'Veikkausliiga', '2015')
-#    print ps
-    ps = get_match_percentages_of_team('Kuopion Palloseura', season='2015')
-#    print ps
-    ps = get_match_percentages_of_team('Kuopion Palloseura', 'Veikkausliiga')
-#    print ps
-    ps = get_match_percentages_of_team('Kuopion Palloseura')
-#    print ps
-#    print
+        for match in matches:
+            if match['full_time_home_team_goals'] > match['full_time_away_team_goals']:
+                home_win += 1
+            elif match['full_time_home_team_goals'] < match['full_time_away_team_goals']:
+                away_win += 1
+            else:
+                draw += 1
+                
+        if num_of_matches == 0:
+            return (0,0,0,0)
+        else:
+            return (float(home_win)/num_of_matches,
+                    float(draw)/num_of_matches,
+                    float(away_win)/num_of_matches,
+                    num_of_matches)
+    else:
+        if len(matches) == 0:
+            return (0,0,0,0)
+        
+        delta = (end_weight - start_weight)/len(matches)
+        weight_sum = 0.
+        
+        home_win = 0.
+        draw = 0.
+        away_win = 0.
+        
+        weight = start_weight
+        
+        for g in matches:
+            if g['full_time_home_team_goals'] > g['full_time_away_team_goals']:
+                home_win += weight
+            elif g['full_time_home_team_goals'] < g['full_time_away_team_goals']:
+                away_win += weight
+            else:
+                draw += weight
+                
+            weight_sum += weight
+                
+            weight += delta
+                
+        return (home_win/weight_sum,
+                draw/weight_sum,
+                away_win/weight_sum,
+                len(matches))
 
-    ps = get_home_match_percentages_of_team('Kuopion Palloseura', 'Veikkausliiga', '2015')
-#    print ps
-    ps = get_home_match_percentages_of_team('Kuopion Palloseura', season='2015')
-#    print ps
-    ps = get_home_match_percentages_of_team('Kuopion Palloseura', 'Veikkausliiga')
-#    print ps
-    ps = get_home_match_percentages_of_team('Kuopion Palloseura')
-#    print ps
-#    print
-
-    ps = get_away_match_percentages_of_team('Kuopion Palloseura', 'Veikkausliiga', '2015')
-#    print ps
-    ps = get_away_match_percentages_of_team('Kuopion Palloseura', season='2015')
-#    print ps
-    ps = get_away_match_percentages_of_team('Kuopion Palloseura', 'Veikkausliiga')
-#    print ps
-    ps = get_away_match_percentages_of_team('Kuopion Palloseura')
-#    print ps
-#    print
-    
-    ps = get_1X2_percentages()
-    print ps    
-    ps = get_1X2_percentages(league='Veikkausliiga')
-    print ps
-    ps = get_1X2_percentages(league='Veikkausliiga', season='2015')
-    print ps    
-    ps = get_1X2_percentages(league='Veikkausliiga', start='2015-01-01', end='2015-12-31')
-    print ps    
-    ps = get_1X2_percentages(season='2015')
-    print ps
-    ps = get_1X2_percentages(start='2015-01-01', end='2015-12-31')
-    print ps
-    ps = get_1X2_percentages(start='2015-01-01')
-    print ps
-    ps = get_1X2_percentages(end='2015-12-31')
-    print ps

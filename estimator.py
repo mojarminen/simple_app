@@ -312,6 +312,71 @@ def poisson(home_team, away_team, date, season=None, league=None):
     return result
 
 
+HISTORY_IN_WEEKS = 109
+HISTORY_IN_MATCHES = 110
+START_WEIGHT = 0.7001614657979722
+END_WEIGHT = 0.8836526735543674
+OVER_POWER_THRESHOLD = 1.6049555513706968
+OVER_POWER_EXTRA = 0.11624288522229594
+CLOSE_MATCH_THRESHOLD = 0.038231588134949424
+CLOSE_MATCH_TRIM = 0.05733478504418113
+def direct(home_team, away_team, date, season=None, league=None):
+    
+    global HISTORY_IN_WEEKS, START_WEIGHT, END_WEIGHT, OVER_POWER_THRESHOLD, OVER_POWER_EXTRA, CLOSE_MATCH_THRESHOLD, CLOSE_MATCH_TRIM, HISTORY_IN_MATCHES
+    
+    if HISTORY_IN_WEEKS:
+        year, month, day = [int(d) for d in date.split('-')]
+        start = datetime.date(year, month, day) + datetime.timedelta(weeks=-HISTORY_IN_WEEKS)
+        start = start.strftime('%Y-%m-%d')
+    else:
+        start = None
+
+    if HISTORY_IN_MATCHES:
+        half_of_matches = HISTORY_IN_MATCHES/2
+    else:
+        half_of_matches = None
+        
+    h_h1, h_hX, h_h2, h_h_count = history.get_full_time_home_match_percentages_of_team(home_team, league=league, season=None, start=start, 
+                                                                                       end=date, start_weight=START_WEIGHT, end_weight=END_WEIGHT,
+                                                                                       number_of_matches=half_of_matches)
+    h_m1, h_mX, h_m2, h_m_count = history.get_full_time_match_percentages_of_team(home_team, league=league, season=None, start=start, 
+                                                                                  end=date, start_weight=START_WEIGHT, end_weight=END_WEIGHT,
+                                                                                  number_of_matches=HISTORY_IN_MATCHES)
+    
+    a_a2, a_aX, a_a1, a_a_count = history.get_full_time_away_match_percentages_of_team(away_team, league=league, season=None, start=start, 
+                                                                                       end=date, start_weight=START_WEIGHT, end_weight=END_WEIGHT,
+                                                                                       number_of_matches=half_of_matches)
+    a_m2, a_mX, a_m1, a_m_count = history.get_full_time_match_percentages_of_team(away_team, league=league, season=None, start=start, 
+                                                                                  end=date, start_weight=START_WEIGHT, end_weight=END_WEIGHT,
+                                                                                  number_of_matches=HISTORY_IN_MATCHES)
+    
+    c1, cX, c2, c_count = history.get_full_time_1X2_percentages(league=league, start=start, end=date)
+
+    if h_h_count < 5 or a_a_count < 5 or h_m_count < 10 or a_m_count < 10:
+        return None
+
+    result = {}
+
+    result['1'] = float(h_h1 + h_m1 + a_a1 + a_m1 + c1)/5
+    result['X'] = float(h_hX + h_mX + a_aX + a_mX + cX)/5
+    result['2'] = float(h_h2 + h_m2 + a_a2 + a_m2 + c2)/5
+    
+    # Fix probabilities based on the nature of the game.
+    if result['1']/result['2'] > OVER_POWER_THRESHOLD:
+        result['1'] += OVER_POWER_EXTRA
+        result['2'] -= OVER_POWER_EXTRA
+    elif result['2']/result['1'] > OVER_POWER_THRESHOLD:
+        result['2'] += OVER_POWER_EXTRA
+        result['1'] -= OVER_POWER_EXTRA
+
+    if result['1']/result['2'] > (1-CLOSE_MATCH_THRESHOLD) and result['1']/result['2'] < (1+CLOSE_MATCH_THRESHOLD):
+        result['1'] -= CLOSE_MATCH_TRIM/2.
+        result['2'] -= CLOSE_MATCH_TRIM/2.
+        result['X'] += CLOSE_MATCH_TRIM
+    
+    return result
+
+
 if __name__ == '__main__':
 #    print db.get_teams()
     

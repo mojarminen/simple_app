@@ -46,13 +46,13 @@ def play(initial_money, estimator, betting_strategy, league=None, season=None, s
         match['returning'] = match['returning'] - match['bet_1'] - match['bet_X'] - match['bet_2']
  
         # Collect.
-        if match['home_goals'] > match['away_goals'] and match['bet_1']:
+        if match['full_time_home_team_goals'] > match['full_time_away_team_goals'] and match['bet_1']:
             money += (odds['home_win'] * match['bet_1'])
             match['returning'] += (odds['home_win'] * match['bet_1'])
-        elif match['home_goals'] < match['away_goals'] and match['bet_2']:
+        elif match['full_time_home_team_goals'] < match['full_time_away_team_goals'] and match['bet_2']:
             money += (odds['away_win'] * match['bet_2'])
             match['returning'] += (odds['away_win'] * match['bet_2'])
-        elif match['home_goals'] == match['away_goals'] and match['bet_X']:
+        elif match['full_time_home_team_goals'] == match['full_time_away_team_goals'] and match['bet_X']:
             money += (odds['draw'] * match['bet_X'])
             match['returning'] += (odds['draw'] * match['bet_X'])
         
@@ -93,8 +93,9 @@ if __name__ == '__main__':
         print match
     '''
     
-    strategies = ((estimator.simple_estimation2, betting_strategy.div_100),
-                  (estimator.poisson, betting_strategy.div_100))
+#    strategies = ((estimator.simple_estimation2, betting_strategy.div_100),
+#                  (estimator.poisson, betting_strategy.div_100))
+    strategies = ((estimator.direct, betting_strategy.div_100),)
 
     results = []
     
@@ -105,6 +106,8 @@ if __name__ == '__main__':
             print 'Next Generation Estimator:'
         elif get_estimations == estimator.poisson:
             print 'Poisson'
+        elif get_estimations == estimator.direct:
+            print 'Direct'
         else:
             raise Exception('unrecognised estimator')
         
