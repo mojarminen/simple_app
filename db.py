@@ -114,7 +114,7 @@ def get_league_id(league):
     cur.execute('''SELECT id FROM league WHERE title = ?''', (league,))
     result = cur.fetchone()
     if not result:
-        raise Exception("No league found '%s'" % team)
+        raise Exception("No league found '%s'" % league)
     return result[0]
     
 
@@ -123,7 +123,7 @@ def get_season_id(season):
     cur.execute('''SELECT id FROM season WHERE title = ?''', (season,))
     result = cur.fetchone()
     if not result:
-        raise Exception("No season found '%s'" % team)
+        raise Exception("No season found '%s'" % season)
     return result[0]
     
 

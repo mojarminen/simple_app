@@ -40,7 +40,7 @@ if __name__ == '__main__':
     INITIAL_MONEY = 1000
     
     POPULATION_SIZE = 100
-    MUTATION_FREQUENCY = 0.01 # portion of new genes mutated
+    MUTATION_FREQUENCY = 0.07 # portion of new genes mutated
     
     ESTIMATOR = estimator_module.direct
 
